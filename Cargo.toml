@@ -1,0 +1,7 @@
+[package]
+name = "tinyhouse-solver"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+identity-hash = "0.1"
