@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 identity-hash = "0.1"
+petgraph = "0.8.3"
+modular-bitfield = "0.13.1"

@@ -1,19 +1,10 @@
-use std::ops::{BitAnd, Shl, Shr, Sub};
+use std::todo;
+
+use modular_bitfield::{Specifier, bitfield, prelude::*, specifiers::B4};
 
 fn main() {
-    println!("{:b}", get_bits(0b101010101, 0, 4));
+    println!("test");
 }
-
-/*
-1 bit move side
-4 bits white king position
-4 bits black king position
-5 * 8 bits for other pieces position (board and pocket)
-1 * 8 bits for color
-3 * 2 = 6 bits for pawns promotion types
-
-sum 63 bits
-*/
 
 /*
 position encoding
@@ -22,83 +13,78 @@ position encoding
 0100 0101 0110 0111
 1000 1001 1010 1011
 1100 1101 1110 1111
-
 */
 
-// do not use numbers >= 64 for start and length
-fn get_bits<T1, T2, T3>(number: T1, start: T2, length: T3) -> T1
-where
-    T1: Shr<T2, Output = T1>
-        + Shl<T3, Output = T1>
-        + BitAnd<T1, Output = T1>
-        + Sub<T1, Output = T1>
-        + From<u8>,
-{
-    (number >> start) & ((T1::from(1) << length) - T1::from(1))
-}
-
-/*
-#[derive(PartialEq, Eq, PartialOrd, Ord, Default)]
-enum Color {
-    #[default]
-    White = 0,
-    Black = 1,
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Specifier)]
 enum PieceType {
-    King = 0,
-    Wazir = 1,
-    Horse = 2,
-    Ferz = 3,
-    Pawn = 4,
+    Wazir = 0,
+    Horse = 1,
+    Ferz = 2,
+    Pawn = 3,
 }
 
-struct BoardPiece {
-    color: Color,
-    cell_type: PieceType,
+#[repr(u64)]
+#[bitfield]
+pub struct Board {
+    white_king_pos: B4,
+    black_king_pos: B4,
+    wazir_pos1: B4,
+    wazir_pos2: B4,
+    horse_pos1: B4,
+    horse_pos2: B4,
+    ferz_pos1: B4,
+    ferz_pos2: B4,
+    pawn_pos1: B4,
+    pawn_pos2: B4,
+    wazir_color1: bool,
+    wazir_color2: bool,
+    horse_color1: bool,
+    horse_color2: bool,
+    ferz_color1: bool,
+    ferz_color2: bool,
+    pawn_color1: bool,
+    pawn_color2: bool,
+    wazir_in_pocket1: bool,
+    wazir_in_pocket2: bool,
+    horse_in_pocket1: bool,
+    horse_in_pocket2: bool,
+    ferz_in_pocket1: bool,
+    ferz_in_pocket2: bool,
+    pawn_in_pocket1: bool,
+    pawn_in_pocket2: bool,
+    #[bits = 2]
+    pawn_type1: PieceType,
+    #[bits = 2]
+    pawn_type2: PieceType,
+    move_side: bool,
+    #[skip]
+    __: B3,
 }
 
-struct PocketPiece {
-    color: Color,
-    cell_type: PieceType,
-    was_pawn: bool,
+fn sort_board(board: Board) -> Board {
+    todo!()
 }
 
-#[derive(Default)]
-struct Position {
-    current_move: Color,
-    board: [Option<BoardPiece>; 16],
-    pocket: [Option<PocketPiece>; 8],
+fn sort_wazirs(board: Board) -> Board {
+    todo!()
 }
 
-impl TryFrom<u64> for Position {
-    type Error = &'static str;
+fn sort_horses(board: Board) -> Board {
+    todo!()
+}
 
-    fn try_from(value: u64) -> Result<Self, Self::Error> {
-        if value >> 55 != 0 {
-            return Err("Unexpected data, more than 55 bits");
-        }
+fn sort_ferzes(board: Board) -> Board {
+    todo!()
+}
 
-        let mut position: Position = Default::default();
+fn sort_pawns(board: Board) -> Board {
+    todo!()
+}
 
-        match value | 1 {
-            0 => position.current_move = White,
-            _ => position.current_move = Black,
-        }
-        value >>= 1;
+fn generate_moves(board: Board) -> Board {
+    todo!()
+}
 
-        let wk: BoardPiece = BoardPiece {
-            color: White,
-            cell_type: King,
-        };
-
-        position.board[(value | 0b1111) as usize] = Some(wk);
-
-        Ok(position)
-    }
-} */
-
-// fn board_converter()
-
-// fn visualizer(board:u64) -> String { }
+fn visualizer(board: Board) -> String {
+    todo!()
+}
