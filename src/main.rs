@@ -1,5 +1,7 @@
 use std::todo;
 
+use pastey::paste;
+
 use modular_bitfield::{Specifier, bitfield, prelude::*, specifiers::B4};
 
 fn main() {
@@ -15,15 +17,15 @@ position encoding
 1100 1101 1110 1111
 */
 
-#[derive(Specifier)]
-enum PieceType {
+#[derive(Specifier, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PieceType {
     Wazir = 0,
     Horse = 1,
     Ferz = 2,
     Pawn = 3,
 }
 
-#[repr(u64)]
+// white = 0|False, black = 1|True
 #[bitfield]
 pub struct Board {
     white_king_pos: B4,
@@ -62,24 +64,41 @@ pub struct Board {
 }
 
 fn sort_board(board: Board) -> Board {
-    todo!()
+    sort_pawns(sort_ferzes(sort_horses(sort_wazirs(board))))
 }
 
-fn sort_wazirs(board: Board) -> Board {
-    todo!()
+macro_rules! swap_piece_fields {
+    ($board:ident, $piece:ident, $field:ident) => {
+        paste! {
+            let [<$field 1>] = $board.[<$piece _ $field 1>]();
+            let [<$field 2>] = $board.[<$piece _ $field 2>]();
+            $board.[<set_ $piece _ $field 1>]([<$field 2>]);
+            $board.[<set_ $piece _ $field 2>]([<$field 1>]);
+        }
+    };
 }
 
-fn sort_horses(board: Board) -> Board {
-    todo!()
+macro_rules! define_sort {
+    ($fn_name:ident, $piece:ident $(, $field:ident)+ $(,)?) => {
+        paste! {
+            fn $fn_name(mut board: Board) -> Board {
+                let key1 = ( $( board.[<$piece _ $field 1>](), )+ );
+                let key2 = ( $( board.[<$piece _ $field 2>](), )+ );
+
+                if key1 > key2 {
+                    $(swap_piece_fields!(board, $piece, $field);)+
+                }
+
+                board
+            }
+        }
+    };
 }
 
-fn sort_ferzes(board: Board) -> Board {
-    todo!()
-}
-
-fn sort_pawns(board: Board) -> Board {
-    todo!()
-}
+define_sort!(sort_wazirs, wazir, color, in_pocket, pos);
+define_sort!(sort_horses, horse, color, in_pocket, pos);
+define_sort!(sort_ferzes, ferz, color, in_pocket, pos);
+define_sort!(sort_pawns, pawn, color, in_pocket, pos, type);
 
 fn generate_moves(board: Board) -> Board {
     todo!()
