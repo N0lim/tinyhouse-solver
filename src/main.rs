@@ -1,4 +1,7 @@
+use crate::helpers::*;
+
 use core::panic;
+
 use std::{
     collections::btree_map::Range,
     fmt::DebugTuple,
@@ -11,6 +14,8 @@ use pastey::paste;
 use modular_bitfield::{Specifier, bitfield, prelude::*, specifiers::B4};
 
 use num_enum::TryFromPrimitive;
+
+pub mod helpers;
 
 #[derive(Specifier, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, TryFromPrimitive)]
 #[repr(u8)]
@@ -117,7 +122,7 @@ define_sort!(sort_ferzes, ferz, color, in_pocket, pos);
 define_sort!(sort_pawns, pawn, color, in_pocket, pos, type);
 
 fn main() {
-    print!("{:#08b} ", replace_bits(0, 32, 32, 1));
+    print!("{:#08b} ", set_bits(0, 32, 32, 1));
 }
 
 fn generate_blocked_positions(board: Board) -> Vec<u8> {
@@ -173,14 +178,6 @@ fn capture_piece(board: Board, position: u8) -> Board {
     Board::from(num)
 }
 
-fn set_position(board: Board, piece_index: u8, position: u8) -> Board {
-    let mut num: u64 = board.into();
-    let pos_shift = 4 * piece_index;
-    num &= !(0b1111_u64 << pos_shift);
-    num |= (position as u64) << pos_shift;
-    Board::from(num)
-}
-
 fn get_quadruples(board: Board) -> [ChessPiece; 10] {
     let mut arr = [ChessPiece {
         position: 0,
@@ -224,76 +221,4 @@ fn get_quadruples(board: Board) -> [ChessPiece; 10] {
 
 fn visualizer(board: Board) -> String {
     todo!()
-}
-
-fn replace_bits(mut num: u64, start: u64, len: u64, bits: u64) -> u64 {
-    if len == 0 {
-        panic!("length equals zero")
-    }
-    if len == 64 {
-        panic!("length equals size of u64")
-    }
-    if start + len - 1 >= 64 {
-        panic!("replacer bits are out of bounds of u64");
-    }
-    let nullifier = (1 << len) - 1;
-    if bits > nullifier {
-        panic!("number of bits bigger than length");
-    }
-    num &= !(nullifier << start);
-    num |= bits << start;
-    num
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[should_panic(expected = "length equals zero")]
-    fn replace_bits_panic_zero_length() {
-        assert_eq!(0, replace_bits(0, 0, 0, 0));
-    }
-
-    #[test]
-    #[should_panic(expected = "length equals size of u64")]
-    fn replace_bits_panic_len_too_big() {
-        replace_bits(0, 0, 64, 0);
-    }
-
-    #[test]
-    #[should_panic(expected = "replacer bits are out of bounds of u64")]
-    fn replace_bits_panic_start_too_big() {
-        replace_bits(0, 64, 1, 0);
-    }
-
-    #[test]
-    #[should_panic(expected = "replacer bits are out of bounds of u64")]
-    fn replace_bits_panic_sum_too_big() {
-        replace_bits(0, 33, 32, 0);
-    }
-
-    #[test]
-    #[should_panic(expected = "number of bits bigger than length")]
-    fn replace_bits_panic_bigger_than_length() {
-        replace_bits(0, 0, 1, 0b11);
-    }
-
-    #[test]
-    fn replace_bits_one_bit() {
-        for i in 0..64u64 {
-            let replaced: u64 = replace_bits(0, i, 1, 1);
-            let bit_replaced: u64 = 1 << i;
-            assert_eq!(replaced, bit_replaced);
-        }
-    }
-
-    #[test]
-    fn replace_bits_two_bits() {
-        for i in 0..63u64 {
-            let replaced: u64 = replace_bits(0, i, 2, 0b11);
-            let bit_replaced: u64 = 0b11 << i;
-            assert_eq!(replaced, bit_replaced);
-        }
-    }
 }
