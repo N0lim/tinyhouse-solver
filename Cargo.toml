@@ -6,7 +6,11 @@ edition = "2024"
 [dependencies]
 identity-hash = "0.1"
 petgraph = "0.8.3"
-modular-bitfield = "0.13.1"
 pastey = "0.2.3"
-num_enum = "0.7.6"
 proptest = "1.11.0"
+divan = "0.1.21"
+rand = "0.10.3"
+
+[[bench]]
+name = "main_bench"
+harness = false
