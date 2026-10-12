@@ -106,7 +106,7 @@ pub fn get_move_side(board: u64) -> u64 {
     get_bits(board, 60, 1)
 }
 
-pub fn get_chess_pieces(board: u64) -> [ChessPiece; 10] {
+pub fn get_pieces(board: u64) -> [ChessPiece; 10] {
     let mut arr = [ChessPiece {
         position: 0,
         color: None,
@@ -132,6 +132,14 @@ pub fn get_chess_pieces(board: u64) -> [ChessPiece; 10] {
     }
 
     arr
+}
+
+// returns piece by position if piece is not in pocket
+pub fn try_get_piece_by_position(board: u64, position: u64) -> Option<ChessPiece> {
+    let pieces = get_pieces(board);
+    pieces
+        .into_iter()
+        .find(|piece| piece.position == position && piece.in_pocket != Some(1))
 }
 
 pub fn swap_pieces_pair(mut board: u64, pair_index: u64) -> u64 {
@@ -165,7 +173,7 @@ pub fn swap_pieces_pair(mut board: u64, pair_index: u64) -> u64 {
 }
 
 pub fn sort_board(mut board: u64) -> u64 {
-    let pieces = get_chess_pieces(board);
+    let pieces = get_pieces(board);
     for pair_index in 0..5u64 {
         let index1 = pair_index * 2;
         let index2 = pair_index * 2 + 1;
