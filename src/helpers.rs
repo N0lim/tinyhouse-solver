@@ -19,7 +19,7 @@ pawn type encoding
 // pieces should be sorted in lexicographic order of fields, so they placed strangely
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ChessPiece {
-    pub color: Option<u64>,
+    pub color: u64,
     pub in_pocket: Option<u64>,
     pub position: u64,
     pub pawn_type: Option<u64>,
@@ -86,7 +86,9 @@ pub fn get_position(board: u64, piece_index: u64) -> u64 {
 
 pub fn get_color(board: u64, piece_index: u64) -> u64 {
     assert!(piece_index <= 9, "piece index can't be bigger than 9");
-    assert!(piece_index >= 2, "can't set colors of kings");
+    if piece_index < 2 {
+        return (piece_index == 1) as u64;
+    }
     get_bits(board, (piece_index - 2) + 40, 1)
 }
 
@@ -109,7 +111,7 @@ pub fn get_move_side(board: u64) -> u64 {
 pub fn get_pieces(board: u64) -> [ChessPiece; 10] {
     let mut arr = [ChessPiece {
         position: 0,
-        color: None,
+        color: 999,
         in_pocket: None,
         pawn_type: None,
     }; 10];
@@ -117,12 +119,9 @@ pub fn get_pieces(board: u64) -> [ChessPiece; 10] {
     for (i, piece) in (0..10u64).zip(arr.iter_mut()) {
         piece.position = get_position(board, i);
 
-        if i < 2 {
-            piece.color = Some(i);
-        }
+        piece.color = get_color(board, i);
 
         if i >= 2 {
-            piece.color = Some(get_color(board, i));
             piece.in_pocket = Some(get_in_pocket(board, i));
         }
 
@@ -132,6 +131,10 @@ pub fn get_pieces(board: u64) -> [ChessPiece; 10] {
     }
 
     arr
+}
+
+pub fn is_on_board(piece: ChessPiece) -> bool {
+    piece.in_pocket != Some(1)
 }
 
 // returns piece by position if piece is not in pocket
@@ -182,6 +185,32 @@ pub fn sort_board(mut board: u64) -> u64 {
         }
     }
     board
+}
+
+pub fn position_as_offset(position: u64) -> (i8, i8) {
+    assert!(position <= 0b1111);
+    let x = (position % 4) as i8;
+    let y = (position >> 2) as i8;
+    (x, y)
+}
+
+pub fn apply_offset((x_offset, y_offset): (i8, i8), position: u64) -> Option<u64> {
+    let (x, y) = position_as_offset(position);
+    let offsetted_x = x + x_offset;
+    let offsetted_y = y + y_offset;
+    if !(0..=0b11).contains(&offsetted_x) || !(0..=0b11).contains(&offsetted_y) {
+        return None;
+    }
+    Some(((offsetted_y as u64) << 2) | (offsetted_x as u64))
+}
+
+pub fn apply_offsets<I>(offsets: I, position: u64) -> impl Iterator<Item = u64>
+where
+    I: IntoIterator<Item = (i8, i8)>,
+{
+    offsets
+        .into_iter()
+        .filter_map(move |offset| apply_offset(offset, position))
 }
 
 #[cfg(test)]
@@ -253,5 +282,25 @@ mod tests {
             let bit_replaced: u64 = 0b11 << i;
             assert_eq!(replaced, bit_replaced);
         }
+    }
+
+    #[test]
+    fn position_as_offset_max() {
+        assert_eq!(position_as_offset(0b1111), (0b11, 0b11))
+    }
+
+    #[test]
+    fn position_as_offset_min() {
+        assert_eq!(position_as_offset(0b0000), (0b00, 0b00))
+    }
+
+    #[test]
+    fn apply_offset_plus_one_x() {
+        assert_eq!(Some(0b1110 + 1), apply_offset((1, 0), 0b1110));
+    }
+
+    #[test]
+    fn apply_offset_plus_one_y() {
+        assert_eq!(Some(0b1011 + 0b0100), apply_offset((0, 1), 0b1011))
     }
 }

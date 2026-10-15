@@ -20,7 +20,7 @@ pub fn try_capture_piece(mut board: u64, position: u64) -> u64 {
     for (i, piece) in (0..10u64).zip(q.iter()) {
         if piece.position == position
             && piece.in_pocket == Some(0)
-            && piece.color != Some(get_move_side(board))
+            && piece.color != get_move_side(board)
         {
             if i < 2 {
                 panic!("can't capture kings");
@@ -39,55 +39,14 @@ pub fn try_capture_piece(mut board: u64, position: u64) -> u64 {
     sort_board(board)
 }
 
-fn is_available_to_move(board: u64, from: u64, to: u64) -> bool {
-    let from_piece_option = try_get_piece_by_position(board, from);
-    let to_piece_option = try_get_piece_by_position(board, to);
-    match (from_piece_option, to_piece_option) {
-        (None, _) => false,
-        (Some(_), None) => true,
-        (Some(from_piece), Some(to_piece)) => from_piece.color != to_piece.color,
-    }
+pub fn generate_wazir_positions(position: u64) -> impl Iterator<Item = u64> {
+    let offsets: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+    apply_offsets(offsets, position)
 }
 
-pub fn get_blocked_positions(board: u64) -> Vec<u64> {
-    let mut result = Vec::new();
-    let pieces = get_pieces(board);
-    for piece in pieces {
-        if piece.in_pocket != Some(1) && piece.color == Some(get_move_side(board)) {
-            result.push(piece.position);
-        }
-    }
-    result
-}
-
-fn apply_offsets(offsets: &Vec<(i8, i8)>, position: u64) -> Vec<u64> {
-    let mut result = Vec::with_capacity(offsets.capacity());
-    let mut x = position as i8 % 0b11;
-    let mut y = position as i8 / 0b11;
-    for (x_offset, y_offset) in offsets {
-        x += x_offset;
-        y += y_offset;
-
-        if !(0..=0b11).contains(&x) || !(0..=0b11).contains(&y) {
-            continue;
-        }
-        result.push(((y as u64) << 2) & (x as u64));
-    }
-    result
-}
-
-pub fn generate_new_wazir_positions(board: u64, position: u64) -> Vec<u64> {
-    let offsets: Vec<(i8, i8)> = vec![(-1, -1), (-1, 1), (1, -1), (1, 1)];
-    let mut result = apply_offsets(&offsets, position);
-    result.retain(|x| is_available_to_move(board, position, *x));
-    result
-}
-
-pub fn generate_new_ferz_positions(board: u64, position: u64) -> Vec<u64> {
-    let offsets: Vec<(i8, i8)> = vec![(1, 0), (-1, 0), (0, 1), (0, -1)];
-    let mut result = apply_offsets(&offsets, position);
-    result.retain(|x| is_available_to_move(board, position, *x));
-    result
+pub fn generate_ferz_positions(position: u64) -> impl Iterator<Item = u64> {
+    let offsets: [(i8, i8); 4] = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
+    apply_offsets(offsets, position)
 }
 
 fn make_horse_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
@@ -99,49 +58,96 @@ fn make_horse_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
     [o1, o2]
 }
 
-pub fn generate_new_horse_positions(board: u64, position: u64) -> Vec<u64> {
-    let pre_offsets = vec![(1, 0), (-1, 0), (0, 1), (0, -1)];
-    let mut offsets = Vec::with_capacity(8);
-    for (i, pos) in apply_offsets(&pre_offsets, position)
-        .into_iter()
+pub fn generate_horse_positions(
+    position: u64,
+    occupied_positions: &[u64],
+) -> impl Iterator<Item = u64> {
+    const PRE_OFFSETS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+    apply_offsets(PRE_OFFSETS, position)
         .enumerate()
-    {
-        if try_get_piece_by_position(board, pos).is_some() {
-            continue;
-        }
-        for i in make_horse_offset_derivations(pre_offsets[i]) {
-            offsets.push(i);
-        }
-    }
-    let mut result = apply_offsets(&offsets, position);
-    result.retain(|x| is_available_to_move(board, position, *x));
-    result
+        .filter(|(_, pos)| !occupied_positions.contains(pos))
+        .flat_map(|(i, _)| make_horse_offset_derivations(PRE_OFFSETS[i]))
+        .filter_map(move |offset| apply_offset(offset, position))
 }
 
-pub fn generate_new_pawn_positions(board: u64, position: u64) -> Vec<u64> {
-    let mut result = Vec::with_capacity(3);
-    let piece = try_get_piece_by_position(board, position).unwrap();
-    if let Some(c) = piece.color {
-        let move_direction = -1 + 2 * c as i8;
-        for i in apply_offsets(&vec![(-1, move_direction), (1, move_direction)], position) {
-            if try_get_piece_by_position(board, i).is_some_and(|p| p.color != piece.color) {
-                result.push(i);
-            }
-        }
+pub fn generate_forward_pawn_positions(
+    position: u64,
+    occupied_positions: &[u64],
+    color: u64,
+) -> impl Iterator<Item = u64> {
+    let move_direction = -1 + 2 * color as i8;
+    let offsets: [(i8, i8); 1] = [(0, move_direction)];
+    apply_offsets(offsets, position).filter(|pos| !occupied_positions.contains(pos))
+}
 
-        let forward_pos = apply_offsets(&vec![(0, move_direction)], position)[0];
-        if try_get_piece_by_position(board, forward_pos).is_none() {
-            result.push(forward_pos);
-        }
-    }
-    result
+pub fn generate_sideways_pawn_positions(
+    position: u64,
+    enemy_positions: &[u64],
+    color: u64,
+) -> impl Iterator<Item = u64> {
+    let move_direction = -1 + 2 * color as i8;
+    let offsets: [(i8, i8); 2] = [(-1, move_direction), (1, move_direction)];
+    apply_offsets(offsets, position).filter(|pos| enemy_positions.contains(pos))
+}
+
+pub fn generate_king_positions(
+    position: u64,
+    blocked_positions: &[u64],
+) -> impl Iterator<Item = u64> {
+    #[rustfmt::skip]
+    let offsets: [(i8, i8); 8] = [
+        (-1, -1), (-1, 0), (-1, 1),
+        ( 0, -1),          ( 0, 1),
+        ( 1, -1), ( 1, 0), ( 1, 1),
+    ];
+    apply_offsets(offsets, position).filter(|pos| !blocked_positions.contains(pos))
+}
+
+fn collect_pos_by(predicate: impl Fn(&ChessPiece) -> bool, pieces: [ChessPiece; 10]) -> Vec<u64> {
+    pieces
+        .iter()
+        .filter(|piece| predicate(piece))
+        .map(|&piece| piece.position)
+        .collect()
 }
 
 pub fn collect_generated_positions(board: u64) -> Vec<u64> {
-    let mut result = Vec::new();
-    for i in get_pieces(board) {
-        todo!()
+    let move_side = get_move_side(board);
+    let pieces = get_pieces(board);
+    let occupied = collect_pos_by(|&piece| is_on_board(piece), pieces);
+    let friendly = collect_pos_by(
+        |&piece| is_on_board(piece) && piece.color == move_side,
+        pieces,
+    );
+    let enemy = collect_pos_by(
+        |&piece| is_on_board(piece) && piece.color != move_side,
+        pieces,
+    );
+    for (i, position) in pieces
+        .iter()
+        .enumerate()
+        .filter(|(_, piece)| is_on_board(**piece))
+        .map(|(i, &piece)| (i, piece.position))
+    {
+        if i == 0 || i == 1 {
+            todo!()
+        }
+        if i == 2 || i == 3 {
+            generate_wazir_positions(position);
+        }
+        if i == 4 || i == 5 {
+            generate_horse_positions(position, occupied.as_slice());
+        }
+        if i == 6 || i == 7 {
+            generate_ferz_positions(position);
+        }
+        if i == 8 || i == 9 {
+            todo!()
+        }
     }
+    let result = Vec::new();
+
+    todo!();
     result
 }
 
