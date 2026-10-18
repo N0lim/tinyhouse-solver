@@ -1,18 +1,33 @@
+pub mod generators;
 pub mod helpers;
 
-use proptest::{char::range, result};
-
+use crate::generators::*;
 use crate::helpers::*;
-
 use core::panic;
-
 use std::{
-    collections::btree_map::Range,
-    fmt::DebugTuple,
     iter::{Enumerate, Map},
     ops::Neg,
     print, todo,
 };
+
+/*
+position encoding
+
+0000 0001 0010 0011
+0100 0101 0110 0111
+1000 1001 1010 1011
+1100 1101 1110 1111
+
+color encoding
+white = 0|False, black = 1|True
+
+pawn type encoding
+0b00 = Wazir
+0b01 = Horse
+0b10 = Ferz
+0b11 = Pawn
+*/
+const STARTING_POSITION: u64 = 0b_1100_0011;
 
 // notice this function do not check if there is multiple pieces in one position
 pub fn try_capture_piece(mut board: u64, position: u64) -> u64 {
@@ -37,269 +52,6 @@ pub fn try_capture_piece(mut board: u64, position: u64) -> u64 {
     }
     board = set_move_side(board, get_move_side(board) ^ 1);
     sort_board(board)
-}
-
-pub fn generate_wazir_positions(position: u64) -> impl Iterator<Item = u64> {
-    let offsets: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-    apply_offsets(offsets, position)
-}
-
-pub fn generate_ferz_positions(position: u64) -> impl Iterator<Item = u64> {
-    let offsets: [(i8, i8); 4] = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
-    apply_offsets(offsets, position)
-}
-
-fn make_horse_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
-    let (x0, y0) = (offset.0 * 2, offset.1 * 2);
-    let lam1 = |x| i8::from(x == 0);
-    let lam2 = |x| i8::from(x == 0).neg();
-    let o1 = (lam1(x0), lam1(y0));
-    let o2 = (lam2(x0), lam2(y0));
-    [o1, o2]
-}
-
-pub fn generate_horse_positions(
-    position: u64,
-    occupied_positions: &[u64],
-) -> impl Iterator<Item = u64> {
-    const PRE_OFFSETS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-    apply_offsets(PRE_OFFSETS, position)
-        .enumerate()
-        .filter(|(_, pos)| !occupied_positions.contains(pos))
-        .flat_map(|(i, _)| make_horse_offset_derivations(PRE_OFFSETS[i]))
-        .filter_map(move |offset| apply_offset(offset, position))
-}
-
-pub fn generate_forward_pawn_positions(
-    position: u64,
-    occupied_positions: &[u64],
-    color: u64,
-) -> impl Iterator<Item = u64> {
-    let move_direction = -1 + 2 * color as i8;
-    let offsets: [(i8, i8); 1] = [(0, move_direction)];
-    apply_offsets(offsets, position).filter(|pos| !occupied_positions.contains(pos))
-}
-
-pub fn generate_sideways_pawn_positions(
-    position: u64,
-    enemy_positions: &[u64],
-    color: u64,
-) -> impl Iterator<Item = u64> {
-    let move_direction = -1 + 2 * color as i8;
-    let offsets: [(i8, i8); 2] = [(-1, move_direction), (1, move_direction)];
-    apply_offsets(offsets, position).filter(|pos| enemy_positions.contains(pos))
-}
-
-pub fn generate_king_positions(
-    position: u64,
-    blocked_positions: &[u64],
-) -> impl Iterator<Item = u64> {
-    #[rustfmt::skip]
-    let offsets: [(i8, i8); 8] = [
-        (-1, -1), (-1, 0), (-1, 1),
-        ( 0, -1),          ( 0, 1),
-        ( 1, -1), ( 1, 0), ( 1, 1),
-    ];
-    apply_offsets(offsets, position).filter(|pos| !blocked_positions.contains(pos))
-}
-
-fn collect_pos_by(predicate: impl Fn(&ChessPiece) -> bool, pieces: [ChessPiece; 10]) -> Vec<u64> {
-    pieces
-        .iter()
-        .filter(|piece| predicate(piece))
-        .map(|&piece| piece.position)
-        .collect()
-}
-
-pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
-    ext: &mut E,
-    board: u64,
-    move_side: u64,
-) {
-    let pieces = get_pieces(board);
-    let occupied = collect_pos_by(|&piece| is_on_board(piece), pieces);
-    let friendly = collect_pos_by(
-        |&piece| is_on_board(piece) && piece.color == move_side,
-        pieces,
-    );
-    let enemy = collect_pos_by(
-        |&piece| is_on_board(piece) && piece.color != move_side,
-        pieces,
-    );
-
-    // I'd prefer lambda function with index and friendly capture, but don't want to use Box and can't use nested impl for different iterators
-    fn helper(
-        index: usize,
-        friendly: &[u64],
-        iter: impl Iterator<Item = u64>,
-    ) -> impl Iterator<Item = (usize, u64)> {
-        iter.filter(|x| !friendly.contains(x))
-            .map(move |x| (index, x))
-    }
-
-    for (i, &piece) in pieces
-        .iter()
-        .enumerate()
-        .filter(|(_, piece)| is_on_board(**piece) && piece.color == move_side)
-    {
-        let position = piece.position;
-        if i == 2 || i == 3 {
-            ext.extend(helper(
-                i,
-                friendly.as_slice(),
-                generate_wazir_positions(position),
-            ));
-        }
-        if i == 4 || i == 5 {
-            ext.extend(helper(
-                i,
-                friendly.as_slice(),
-                generate_horse_positions(position, occupied.as_slice()),
-            ));
-        }
-        if i == 6 || i == 7 {
-            ext.extend(helper(
-                i,
-                friendly.as_slice(),
-                generate_ferz_positions(position),
-            ));
-        }
-        if i == 8 || i == 9 {
-            let pawn_type = piece.pawn_type.unwrap();
-            if pawn_type == 0 {
-                ext.extend(helper(
-                    i,
-                    friendly.as_slice(),
-                    generate_wazir_positions(position),
-                ));
-            }
-            if pawn_type == 1 {
-                ext.extend(helper(
-                    i,
-                    friendly.as_slice(),
-                    generate_horse_positions(position, occupied.as_slice()),
-                ));
-            }
-            if pawn_type == 2 {
-                ext.extend(helper(
-                    i,
-                    friendly.as_slice(),
-                    generate_ferz_positions(position),
-                ));
-            }
-            if pawn_type == 3 {
-                ext.extend(helper(
-                    i,
-                    friendly.as_slice(),
-                    generate_sideways_pawn_positions(position, enemy.as_slice(), piece.color),
-                ));
-                ext.extend(helper(
-                    i,
-                    friendly.as_slice(),
-                    generate_forward_pawn_positions(position, occupied.as_slice(), piece.color),
-                ));
-            }
-            if pawn_type >= 4 {
-                panic!("wrong pawn type")
-            }
-        }
-    }
-
-    for (i, _) in pieces
-        .iter()
-        .enumerate()
-        .filter(|(_, piece)| !is_on_board(**piece) && piece.color == move_side)
-    {
-        if i < 8 {
-            ext.extend(helper(i, friendly.as_slice(), 0..16));
-        }
-        if i == 8 || i == 9 {
-            ext.extend(helper(i, friendly.as_slice(), 4..12));
-        }
-    }
-}
-
-pub fn collect_generated_positions(board: u64) -> Vec<u64> {
-    let move_side = get_move_side(board);
-    let pieces = get_pieces(board);
-    let occupied = collect_pos_by(|&piece| is_on_board(piece), pieces);
-    let friendly = collect_pos_by(
-        |&piece| is_on_board(piece) && piece.color == move_side,
-        pieces,
-    );
-    let enemy = collect_pos_by(
-        |&piece| is_on_board(piece) && piece.color != move_side,
-        pieces,
-    );
-
-    let mut result: Vec<u64> = Vec::new();
-
-    for (i, &piece) in pieces
-        .iter()
-        .enumerate()
-        .filter(|(_, piece)| is_on_board(**piece) && piece.color == move_side)
-    {
-        let position = piece.position;
-        if i == 0 || i == 1 {
-            todo!()
-        }
-        if i == 2 || i == 3 {
-            result.extend(generate_wazir_positions(position));
-        }
-        if i == 4 || i == 5 {
-            result.extend(generate_horse_positions(position, occupied.as_slice()));
-        }
-        if i == 6 || i == 7 {
-            result.extend(generate_ferz_positions(position));
-        }
-        if i == 8 || i == 9 {
-            let pawn_type = piece.pawn_type.unwrap();
-            if pawn_type == 0 {
-                result.extend(generate_wazir_positions(position));
-            }
-            if pawn_type == 1 {
-                result.extend(generate_horse_positions(position, occupied.as_slice()));
-            }
-            if pawn_type == 2 {
-                result.extend(generate_ferz_positions(position));
-            }
-            if pawn_type == 3 {
-                result.extend(generate_sideways_pawn_positions(
-                    position,
-                    enemy.as_slice(),
-                    piece.color,
-                ));
-                result.extend(generate_forward_pawn_positions(
-                    position,
-                    occupied.as_slice(),
-                    piece.color,
-                ));
-            }
-            if pawn_type >= 4 {
-                panic!("wrong pawn type")
-            }
-        }
-    }
-
-    for (i, &piece) in pieces
-        .iter()
-        .enumerate()
-        .filter(|(_, piece)| !is_on_board(**piece) && piece.color == move_side)
-    {
-        if i < 8 {
-            result.extend(0..16);
-        }
-        if i == 8 || i == 9 {
-            result.extend(4..12);
-        }
-    }
-
-    result.retain(|x| !friendly.contains(x));
-
-    let result = Vec::new();
-
-    todo!();
-    result
 }
 
 fn visualizer(board: u64) -> String {

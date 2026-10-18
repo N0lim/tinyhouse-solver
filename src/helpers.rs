@@ -1,21 +1,3 @@
-/*
-position encoding
-
-0000 0001 0010 0011
-0100 0101 0110 0111
-1000 1001 1010 1011
-1100 1101 1110 1111
-
-color encoding
-white = 0|False, black = 1|True
-
-pawn type encoding
-0b00 = Wazir
-0b01 = Horse
-0b10 = Ferz
-0b11 = Pawn
-*/
-
 // pieces should be sorted in lexicographic order of fields, so they placed strangely
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ChessPiece {
@@ -94,13 +76,13 @@ pub fn get_color(board: u64, piece_index: u64) -> u64 {
 
 pub fn get_in_pocket(board: u64, piece_index: u64) -> u64 {
     assert!(piece_index <= 9, "piece index can't be bigger than 9");
-    assert!(piece_index >= 2, "can't put kings into pocket");
+    assert!(piece_index >= 2, "can't get kings from pocket");
     get_bits(board, (piece_index - 2) + 48, 1)
 }
 
 pub fn get_pawn_type(board: u64, piece_index: u64) -> u64 {
     assert!(piece_index <= 9, "piece index can't be bigger than 9");
-    assert!(piece_index >= 8, "can't set pawn type for non-pawn pieces");
+    assert!(piece_index >= 8, "can't get pawn type for non-pawn pieces");
     get_bits(board, (piece_index - 8) * 2 + 56, 2)
 }
 
@@ -110,7 +92,7 @@ pub fn get_move_side(board: u64) -> u64 {
 
 pub fn get_pieces(board: u64) -> [ChessPiece; 10] {
     let mut arr = [ChessPiece {
-        position: 0,
+        position: 999,
         color: 999,
         in_pocket: None,
         pawn_type: None,
