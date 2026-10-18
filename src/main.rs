@@ -111,7 +111,7 @@ fn collect_pos_by(predicate: impl Fn(&ChessPiece) -> bool, pieces: [ChessPiece; 
         .collect()
 }
 
-pub fn extend_by_generated_positions_non_pawns<E: Extend<(usize, u64)>>(
+pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
     ext: &mut E,
     board: u64,
     move_side: u64,
@@ -143,9 +143,6 @@ pub fn extend_by_generated_positions_non_pawns<E: Extend<(usize, u64)>>(
         .filter(|(_, piece)| is_on_board(**piece) && piece.color == move_side)
     {
         let position = piece.position;
-        if i == 0 || i == 1 {
-            todo!()
-        }
         if i == 2 || i == 3 {
             ext.extend(helper(
                 i,
