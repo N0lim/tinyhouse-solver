@@ -11,7 +11,7 @@ pub fn generate_ferz_positions(position: u64) -> impl Iterator<Item = u64> {
     apply_offsets(offsets, position)
 }
 
-fn make_horse_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
+fn make_hors_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
     let (x0, y0) = (offset.0 * 2, offset.1 * 2);
     let lam1 = |x| i8::from(x == 0);
     let lam2 = |x| i8::from(x == 0).neg();
@@ -20,7 +20,7 @@ fn make_horse_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
     [o1, o2]
 }
 
-pub fn generate_horse_positions(
+pub fn generate_hors_positions(
     position: u64,
     occupied_positions: &[u64],
 ) -> impl Iterator<Item = u64> {
@@ -28,7 +28,7 @@ pub fn generate_horse_positions(
     apply_offsets(PRE_OFFSETS, position)
         .enumerate()
         .filter(|(_, pos)| !occupied_positions.contains(pos))
-        .flat_map(|(i, _)| make_horse_offset_derivations(PRE_OFFSETS[i]))
+        .flat_map(|(i, _)| make_hors_offset_derivations(PRE_OFFSETS[i]))
         .filter_map(move |offset| apply_offset(offset, position))
 }
 
@@ -116,7 +116,7 @@ pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
             ext.extend(helper(
                 i,
                 friendly.as_slice(),
-                generate_horse_positions(position, occupied.as_slice()),
+                generate_hors_positions(position, occupied.as_slice()),
             ));
         }
         if i == 6 || i == 7 {
@@ -139,7 +139,7 @@ pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
                 ext.extend(helper(
                     i,
                     friendly.as_slice(),
-                    generate_horse_positions(position, occupied.as_slice()),
+                    generate_hors_positions(position, occupied.as_slice()),
                 ));
             }
             if pawn_type == 2 {
@@ -209,7 +209,7 @@ pub fn collect_generated_positions(board: u64) -> Vec<u64> {
             result.extend(generate_wazir_positions(position));
         }
         if i == 4 || i == 5 {
-            result.extend(generate_horse_positions(position, occupied.as_slice()));
+            result.extend(generate_hors_positions(position, occupied.as_slice()));
         }
         if i == 6 || i == 7 {
             result.extend(generate_ferz_positions(position));
@@ -220,7 +220,7 @@ pub fn collect_generated_positions(board: u64) -> Vec<u64> {
                 result.extend(generate_wazir_positions(position));
             }
             if pawn_type == 1 {
-                result.extend(generate_horse_positions(position, occupied.as_slice()));
+                result.extend(generate_hors_positions(position, occupied.as_slice()));
             }
             if pawn_type == 2 {
                 result.extend(generate_ferz_positions(position));

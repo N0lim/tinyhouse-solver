@@ -3,6 +3,8 @@ pub mod helpers;
 
 use crate::generators::*;
 use crate::helpers::*;
+use comfy_table::Table;
+use comfy_table::presets::NOTHING;
 use core::panic;
 use std::{
     iter::{Enumerate, Map},
@@ -23,7 +25,7 @@ white = 0|False, black = 1|True
 
 pawn type encoding
 0b00 = Wazir
-0b01 = Horse
+0b01 = Hors
 0b10 = Ferz
 0b11 = Pawn
 */
@@ -54,8 +56,78 @@ pub fn try_capture_piece(mut board: u64, position: u64) -> u64 {
     sort_board(board)
 }
 
-fn visualizer(board: u64) -> String {
+fn visualize_king(color: u64) -> char {
+    match color {
+        0 => '♔',
+        1 => '♚',
+        _ => panic!("wrong color"),
+    }
+}
+
+fn visualize_wazir(color: u64) -> char {
+    match color {
+        0 => '🨠',
+        1 => '🨦',
+        _ => panic!("wrong color"),
+    }
+}
+
+fn visualize_hors(color: u64) -> char {
+    match color {
+        0 => '🩣',
+        1 => '🩪',
+        _ => panic!("wrong color"),
+    }
+}
+
+fn visualize_ferz(color: u64) -> char {
+    match color {
+        0 => '🨡',
+        1 => '🨧',
+        _ => panic!("wrong color"),
+    }
+}
+
+fn visualize_pawn(color: u64) -> char {
+    match color {
+        0 => '♙',
+        1 => '♟',
+        _ => panic!("wrong color"),
+    }
+}
+
+fn visualize_piece(piece_index: u64, piece: ChessPiece) -> char {
+    let color = piece.color;
+    match piece_index {
+        0 | 1 => visualize_king(color),
+        2 | 3 => visualize_wazir(color),
+        4 | 5 => visualize_hors(color),
+        6 | 7 => visualize_ferz(color),
+        8 | 9 if is_on_board(piece) => match piece.pawn_type.unwrap() {
+            0 => visualize_wazir(color),
+            1 => visualize_hors(color),
+            2 => visualize_ferz(color),
+            3 => visualize_pawn(color),
+            _ => panic!("wrong pawn type"),
+        },
+        8 | 9 => visualize_pawn(color),
+        _ => panic!("wrong piece index"),
+    }
+}
+
+fn visualizer(board: u64) -> Table {
+    let mut table = Table::new();
+    table.load_style(NOTHING);
+    let pieces = get_pieces(board);
     todo!()
 }
 
-fn main() {}
+fn main() {
+    let mut table = Table::new();
+    table.load_style(NOTHING);
+    table.add_row(vec!["", "", "", "♔", "", "abcdefgh"]);
+    table.add_row(vec![""]);
+    table.add_row(vec![""]);
+    table.add_row(vec!["♚"]);
+    print!("{table}")
+}

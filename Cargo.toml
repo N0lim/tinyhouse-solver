@@ -10,6 +10,7 @@ pastey = "0.2.3"
 proptest = "1.11.0"
 divan = "0.1.21"
 rand = "0.10.3"
+comfy-table = "8.0.1"
 
 [[bench]]
 name = "main_bench"
