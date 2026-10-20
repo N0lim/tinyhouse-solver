@@ -3,9 +3,14 @@ pub mod helpers;
 
 use crate::generators::*;
 use crate::helpers::*;
+use comfy_table::Cell;
+use comfy_table::Color;
 use comfy_table::Table;
 use comfy_table::presets::NOTHING;
 use core::panic;
+use proptest::bits::usize;
+use std::array::from_fn;
+use std::mem;
 use std::{
     iter::{Enumerate, Map},
     ops::Neg,
@@ -115,6 +120,58 @@ fn visualize_piece(piece_index: u64, piece: ChessPiece) -> char {
     }
 }
 
+fn board_to_symbols(board: u64) -> [[Option<char>; 9]; 4] {
+    let mut symbols = [[None; 9]; 4];
+    let mut pocket0: Vec<char> = Vec::with_capacity(8);
+    let mut pocket1: Vec<char> = Vec::with_capacity(8);
+    for (index, &piece) in get_pieces(board).iter().enumerate() {
+        let (x, y) = position_as_offset(piece.position);
+        let (x, y) = (x as usize, y as usize);
+        let symbol = visualize_piece(index as u64, piece);
+        if is_on_board(piece) {
+            symbols[y][x] = Some(symbol);
+        } else if piece.color == 0 {
+            pocket0.push(symbol);
+        } else {
+            pocket1.push(symbol);
+        }
+    }
+    for (index, &symbol) in pocket1.iter().enumerate() {
+        symbols[(index % 4) + 6][index / 4] = Some(symbol);
+    }
+    for (index, &symbol) in pocket1.iter().enumerate() {
+        symbols[(index % 4) + 6][(index / 4) + 2] = Some(symbol);
+    }
+    symbols
+}
+
+fn init_empty_cells(board: u64) -> [[Cell; 9]; 4] {
+    let symbols = board_to_symbols(board);
+    std::array::from_fn(|y| {
+        std::array::from_fn(|x| {
+            let mut cell = Cell::new("");
+            if let Some(symbol) = symbols[y][x] {
+                cell = Cell::new(symbol)
+            }
+            if x < 4 {
+                let color = if ((x ^ y) & 1) == 0 {
+                    Color::White
+                } else {
+                    Color::Black
+                };
+                cell = cell.bg(color);
+            }
+            if x > 4 && y < 2 {
+                cell = cell.bg(Color::White)
+            }
+            if x > 4 && y >= 2 {
+                cell = cell.bg(Color::Black)
+            }
+            cell
+        })
+    })
+}
+
 fn visualizer(board: u64) -> Table {
     let mut table = Table::new();
     table.load_style(NOTHING);
@@ -125,9 +182,6 @@ fn visualizer(board: u64) -> Table {
 fn main() {
     let mut table = Table::new();
     table.load_style(NOTHING);
-    table.add_row(vec!["", "", "", "♔", "", "abcdefgh"]);
-    table.add_row(vec![""]);
-    table.add_row(vec![""]);
-    table.add_row(vec!["♚"]);
+    table.add_rows(init_empty_cells(STARTING_POSITION));
     print!("{table}")
 }
