@@ -17,25 +17,6 @@ use std::{
     print, todo,
 };
 
-/*
-position encoding
-
-0000 0001 0010 0011
-0100 0101 0110 0111
-1000 1001 1010 1011
-1100 1101 1110 1111
-
-color encoding
-white = 0|False, black = 1|True
-
-pawn type encoding
-0b00 = Wazir
-0b01 = Hors
-0b10 = Ferz
-0b11 = Pawn
-*/
-const STARTING_POSITION: u64 = 0b_1100_0011;
-
 // notice this function do not check if there is multiple pieces in one position
 pub fn try_capture_piece(mut board: u64, position: u64) -> u64 {
     let q = get_pieces(board);
@@ -79,8 +60,8 @@ fn visualize_wazir(color: u64) -> char {
 
 fn visualize_hors(color: u64) -> char {
     match color {
-        0 => '🩣',
-        1 => '🩪',
+        0 => '🨢',
+        1 => '🨨',
         _ => panic!("wrong color"),
     }
 }
@@ -145,7 +126,7 @@ fn board_to_symbols(board: u64) -> [[Option<char>; 9]; 4] {
     symbols
 }
 
-fn init_empty_cells(board: u64) -> [[Cell; 9]; 4] {
+fn init_cells(board: u64) -> [[Cell; 9]; 4] {
     let symbols = board_to_symbols(board);
     std::array::from_fn(|y| {
         std::array::from_fn(|x| {
@@ -172,16 +153,15 @@ fn init_empty_cells(board: u64) -> [[Cell; 9]; 4] {
     })
 }
 
-fn visualizer(board: u64) -> Table {
+fn init_table(board: u64) -> Table {
     let mut table = Table::new();
     table.load_style(NOTHING);
-    let pieces = get_pieces(board);
-    todo!()
+
+    let cells = init_cells(board);
+    table.add_rows(cells);
+    table
 }
 
 fn main() {
-    let mut table = Table::new();
-    table.load_style(NOTHING);
-    table.add_rows(init_empty_cells(STARTING_POSITION));
-    print!("{table}")
+    print!("{}", init_table(STARTING_POSITION))
 }

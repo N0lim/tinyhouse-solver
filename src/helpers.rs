@@ -1,3 +1,23 @@
+/*
+position encoding
+
+0000 0001 0010 0011
+0100 0101 0110 0111
+1000 1001 1010 1011
+1100 1101 1110 1111
+
+color encoding
+white = 0|False, black = 1|True
+
+pawn type encoding
+0b00 = Wazir
+0b01 = Hors
+0b10 = Ferz
+0b11 = Pawn
+*/
+pub const STARTING_POSITION: u64 =
+    0b_11_11_00000000_10101010_0111_1000_0000_1111_0001_1110_0010_1101_1100_0011;
+
 // pieces should be sorted in lexicographic order of fields, so they placed strangely
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ChessPiece {
@@ -265,6 +285,11 @@ mod tests {
             let bit_replaced: u64 = 0b11 << i;
             assert_eq!(replaced, bit_replaced);
         }
+    }
+
+    #[test]
+    fn sort_starting_position_equal() {
+        assert_eq!(sort_board(STARTING_POSITION), STARTING_POSITION)
     }
 
     #[test]
