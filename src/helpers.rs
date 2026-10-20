@@ -16,7 +16,7 @@ pawn type encoding
 0b11 = Pawn
 */
 pub const STARTING_POSITION: u64 =
-    0b_11_11_00000000_10101010_0111_1000_0000_1111_0001_1110_0010_1101_1100_0011;
+    0b_11_11_00000000_10101010_0111_1000_0000_1111_0001_1110_0010_1101_0011_1100;
 
 // pieces should be sorted in lexicographic order of fields, so they placed strangely
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -288,8 +288,18 @@ mod tests {
     }
 
     #[test]
+    fn get_color_white_king() {
+        assert_eq!(get_color(0, 0), 0)
+    }
+
+    #[test]
+    fn get_color_black_king() {
+        assert_eq!(get_color(0, 1), 1)
+    }
+
+    #[test]
     fn sort_starting_position_equal() {
-        assert_eq!(sort_board(STARTING_POSITION), STARTING_POSITION)
+        assert_eq!(STARTING_POSITION, sort_board(STARTING_POSITION))
     }
 
     #[test]
