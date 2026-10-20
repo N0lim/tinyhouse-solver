@@ -51,14 +51,15 @@ pub fn set_move_side(board: u64, move_side: u64) -> u64 {
     set_bits(board, 60, 1, move_side)
 }
 
-pub fn get_bits(num: u64, start: u64, len: u64) -> u64 {
+pub fn get_bits(mut num: u64, start: u64, len: u64) -> u64 {
     assert!(len != 0, "length equals zero");
     assert!(start + len <= 64, "getted bits are out of bounds of u64");
     let mut get_mask = u64::MAX;
     if len < 64 {
         get_mask = (1 << len) - 1;
     }
-    num & (get_mask << start)
+    num &= (get_mask << start);
+    num >> start
 }
 
 pub fn get_position(board: u64, piece_index: u64) -> u64 {
@@ -170,7 +171,7 @@ pub fn sort_board(mut board: u64) -> u64 {
 }
 
 pub fn position_as_offset(position: u64) -> (i8, i8) {
-    assert!(position <= 0b1111);
+    assert!(position <= 0b1111, "position is too big: {:b}", position);
     let x = (position % 4) as i8;
     let y = (position >> 2) as i8;
     (x, y)
