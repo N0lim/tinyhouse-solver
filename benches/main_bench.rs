@@ -1,7 +1,11 @@
+use std::collections::HashSet;
+
 use divan::prelude::*;
 use identity_hash::IntSet;
 use rand::distr::Uniform;
 use rand::prelude::*;
+use tinyhouse_solver::generators::*;
+use tinyhouse_solver::helpers::{STARTING_POSITION, get_move_side};
 
 fn main() {
     divan::main();
@@ -48,4 +52,24 @@ fn intset_insert_bench(bencher: Bencher, unique_percent: u64) {
             }
             black_box(set)
         })
+}
+
+#[divan::bench]
+fn extend_vec_generated_starting_position(bencher: Bencher) {
+    let position = STARTING_POSITION;
+
+    bencher.with_inputs(Vec::new).bench_refs(|vec| {
+        extend_by_generated_positions(vec, black_box(position), black_box(get_move_side(position)));
+        vec.sort_unstable();
+        vec.dedup();
+    });
+}
+
+#[divan::bench]
+fn extend_hashset_generated_starting_position(bencher: Bencher) {
+    let position = STARTING_POSITION;
+
+    bencher.with_inputs(HashSet::new).bench_refs(|hs| {
+        extend_by_generated_positions(hs, black_box(position), black_box(get_move_side(position)));
+    });
 }

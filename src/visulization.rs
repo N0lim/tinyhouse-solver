@@ -77,10 +77,10 @@ fn board_to_symbols(board: u64) -> [[Option<char>; 9]; 4] {
         }
     }
     for (index, &symbol) in pocket1.iter().enumerate() {
-        symbols[(index % 4) + 6][index / 4] = Some(symbol);
+        symbols[index / 4][(index % 4) + 6] = Some(symbol);
     }
     for (index, &symbol) in pocket1.iter().enumerate() {
-        symbols[(index % 4) + 6][(index / 4) + 2] = Some(symbol);
+        symbols[(index / 4) + 2][(index % 4) + 6] = Some(symbol);
     }
     symbols
 }

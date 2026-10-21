@@ -73,7 +73,17 @@ fn collect_pos_by(predicate: impl Fn(&ChessPiece) -> bool, pieces: [ChessPiece; 
         .collect()
 }
 
-pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
+// I'd prefer lambda function with index and friendly capture, but don't want to use Box and can't use nested impl for different iterators
+fn filter_friendly(
+    index: usize,
+    friendly: &[u64],
+    iter: impl Iterator<Item = u64>,
+) -> impl Iterator<Item = (usize, u64)> {
+    iter.filter(|x| !friendly.contains(x))
+        .map(move |x| (index, x))
+}
+
+pub fn extend_by_generated_positions_non_kings_on_board<E: Extend<(usize, u64)>>(
     ext: &mut E,
     board: u64,
     move_side: u64,
@@ -89,16 +99,6 @@ pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
         pieces,
     );
 
-    // I'd prefer lambda function with index and friendly capture, but don't want to use Box and can't use nested impl for different iterators
-    fn helper(
-        index: usize,
-        friendly: &[u64],
-        iter: impl Iterator<Item = u64>,
-    ) -> impl Iterator<Item = (usize, u64)> {
-        iter.filter(|x| !friendly.contains(x))
-            .map(move |x| (index, x))
-    }
-
     for (i, &piece) in pieces
         .iter()
         .enumerate()
@@ -106,21 +106,21 @@ pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
     {
         let position = piece.position;
         if i == 2 || i == 3 {
-            ext.extend(helper(
+            ext.extend(filter_friendly(
                 i,
                 friendly.as_slice(),
                 generate_wazir_positions(position),
             ));
         }
         if i == 4 || i == 5 {
-            ext.extend(helper(
+            ext.extend(filter_friendly(
                 i,
                 friendly.as_slice(),
                 generate_hors_positions(position, occupied.as_slice()),
             ));
         }
         if i == 6 || i == 7 {
-            ext.extend(helper(
+            ext.extend(filter_friendly(
                 i,
                 friendly.as_slice(),
                 generate_ferz_positions(position),
@@ -129,33 +129,33 @@ pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
         if i == 8 || i == 9 {
             let pawn_type = piece.pawn_type.unwrap();
             if pawn_type == 0 {
-                ext.extend(helper(
+                ext.extend(filter_friendly(
                     i,
                     friendly.as_slice(),
                     generate_wazir_positions(position),
                 ));
             }
             if pawn_type == 1 {
-                ext.extend(helper(
+                ext.extend(filter_friendly(
                     i,
                     friendly.as_slice(),
                     generate_hors_positions(position, occupied.as_slice()),
                 ));
             }
             if pawn_type == 2 {
-                ext.extend(helper(
+                ext.extend(filter_friendly(
                     i,
                     friendly.as_slice(),
                     generate_ferz_positions(position),
                 ));
             }
             if pawn_type == 3 {
-                ext.extend(helper(
+                ext.extend(filter_friendly(
                     i,
                     friendly.as_slice(),
                     generate_sideways_pawn_positions(position, enemy.as_slice(), piece.color),
                 ));
-                ext.extend(helper(
+                ext.extend(filter_friendly(
                     i,
                     friendly.as_slice(),
                     generate_forward_pawn_positions(position, occupied.as_slice(), piece.color),
@@ -166,24 +166,64 @@ pub fn extend_by_generated_positions_non_kings<E: Extend<(usize, u64)>>(
             }
         }
     }
+}
 
+pub fn extend_by_generated_positions_in_pocket<E: Extend<(usize, u64)>>(
+    ext: &mut E,
+    board: u64,
+    move_side: u64,
+) {
+    let pieces = get_pieces(board);
+    let friendly = collect_pos_by(
+        |&piece| is_on_board(piece) && piece.color == move_side,
+        pieces,
+    );
     for (i, _) in pieces
         .iter()
         .enumerate()
         .filter(|(_, piece)| !is_on_board(**piece) && piece.color == move_side)
     {
         if i < 8 {
-            ext.extend(helper(i, friendly.as_slice(), 0..16));
+            ext.extend(filter_friendly(i, friendly.as_slice(), 0..16));
         }
         if i == 8 || i == 9 {
-            ext.extend(helper(i, friendly.as_slice(), 4..12));
+            ext.extend(filter_friendly(i, friendly.as_slice(), 4..12));
         }
     }
 }
 
-pub fn collect_generated_positions(board: u64) -> Vec<u64> {
-    let result = Vec::new();
+pub fn extend_by_king<E: Extend<(usize, u64)>>(ext: &mut E, board: u64, move_side: u64) {
+    let pieces = get_pieces(board);
+    let friendly = collect_pos_by(
+        |&piece| is_on_board(piece) && piece.color == move_side,
+        pieces,
+    );
+    let mut enemy_move_positions = Vec::new();
+    extend_by_generated_positions_non_kings_on_board(
+        &mut enemy_move_positions,
+        board,
+        move_side ^ 1,
+    );
+    let blocked: Vec<u64> = enemy_move_positions
+        .into_iter()
+        .map(|(_, pos)| pos)
+        .chain(friendly)
+        .chain(generate_king_positions(
+            get_position(board, move_side ^ 1),
+            &[],
+        ))
+        .collect();
+    let generated = generate_king_positions(move_side, blocked.as_slice());
 
-    todo!();
-    result
+    ext.extend(((move_side as usize)..).zip(generated));
+}
+
+pub fn extend_by_generated_positions<E: Extend<(usize, u64)>>(
+    ext: &mut E,
+    board: u64,
+    move_side: u64,
+) {
+    extend_by_generated_positions_non_kings_on_board(ext, board, move_side);
+    extend_by_king(ext, board, move_side);
+    extend_by_generated_positions_in_pocket(ext, board, move_side);
 }

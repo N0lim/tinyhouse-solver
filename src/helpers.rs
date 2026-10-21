@@ -19,7 +19,7 @@ pub const STARTING_POSITION: u64 =
     0b_11_11_00000000_10101010_0111_1000_0000_1111_0001_1110_0010_1101_0011_1100;
 
 // pieces should be sorted in lexicographic order of fields, so they placed strangely
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct ChessPiece {
     pub color: u64,
     pub in_pocket: Option<u64>,
@@ -78,12 +78,16 @@ pub fn get_bits(mut num: u64, start: u64, len: u64) -> u64 {
     if len < 64 {
         get_mask = (1 << len) - 1;
     }
-    num &= (get_mask << start);
+    num &= get_mask << start;
     num >> start
 }
 
 pub fn get_position(board: u64, piece_index: u64) -> u64 {
-    assert!(piece_index <= 9, "piece index can't be bigger than 9");
+    assert!(
+        piece_index <= 9,
+        "piece index can't be bigger than 9, index: {}",
+        piece_index
+    );
     get_bits(board, piece_index * 4, 4)
 }
 
