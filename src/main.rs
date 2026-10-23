@@ -28,15 +28,15 @@ pub fn try_capture_piece(mut board: u64, position: u64) -> u64 {
 }
 
 pub fn move_piece(board: u64, index: u64, position: u64) -> u64 {
-    let board = set_position(board, index, position);
     let board = try_capture_piece(board, position);
+    let board = set_position(board, index, position);
     let board = set_move_side(board, get_move_side(board) ^ 1);
     sort_board(board)
 }
 
 pub fn generate_derivative_positions(board: u64) -> impl Iterator<Item = u64> {
     let mut vec = Vec::new();
-    extend_by_generated_positions(&mut vec, board, get_move_side(board));
+    extend_by_generated_positions_non_kings_on_board(&mut vec, board, get_move_side(board));
     vec.into_iter()
         .map(move |(index, pos)| move_piece(board, index as u64, pos))
 }

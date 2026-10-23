@@ -13,8 +13,12 @@ pub fn generate_ferz_positions(position: u64) -> impl Iterator<Item = u64> {
 
 fn make_hors_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
     let (x0, y0) = (offset.0 * 2, offset.1 * 2);
-    let lam1 = |x| i8::from(x == 0);
-    let lam2 = |x| i8::from(x == 0).neg();
+    let lam1 = |x| {
+        if x == 0 { 1 } else { x }
+    };
+    let lam2 = |x| {
+        if x == 0 { -1 } else { x }
+    };
     let o1 = (lam1(x0), lam1(y0));
     let o2 = (lam2(x0), lam2(y0));
     [o1, o2]
