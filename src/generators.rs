@@ -1,14 +1,18 @@
 use crate::helpers::*;
 use std::ops::Neg;
 
-pub fn generate_wazir_positions(position: u64) -> impl Iterator<Item = u64> {
+pub fn for_each_wazir_position(position: u64, mut f: impl FnMut(u64)) {
     let offsets: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-    apply_offsets(offsets, position)
+    for x in apply_offsets(offsets, position) {
+        f(x);
+    }
 }
 
-pub fn generate_ferz_positions(position: u64) -> impl Iterator<Item = u64> {
+pub fn for_each_ferz_position(position: u64, mut f: impl FnMut(u64)) {
     let offsets: [(i8, i8); 4] = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
-    apply_offsets(offsets, position)
+    for x in apply_offsets(offsets, position) {
+        f(x);
+    }
 }
 
 fn make_hors_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
@@ -22,6 +26,69 @@ fn make_hors_offset_derivations(offset: (i8, i8)) -> [(i8, i8); 2] {
     let o1 = (lam1(x0), lam1(y0));
     let o2 = (lam2(x0), lam2(y0));
     [o1, o2]
+}
+
+pub fn for_each_hors_position(position: u64, occupied_positions: &[u64], mut f: impl FnMut(u64)) {
+    const ADJACENT_OFFSETS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+    for offset in ADJACENT_OFFSETS {
+        let adjacent = apply_offset(offset, position);
+        if adjacent.is_none() || occupied_positions.contains(&adjacent.unwrap()) {
+            continue;
+        }
+        for der in make_hors_offset_derivations(offset) {
+            if let Some(x) = apply_offset(der, position) {
+                f(x);
+            }
+        }
+    }
+}
+
+pub fn for_each_forward_pawn_position(
+    position: u64,
+    occupied_positions: &[u64],
+    color: u64,
+    mut f: impl FnMut(u64),
+) {
+    let move_direction = -1 + 2 * color as i8;
+    let offsets: [(i8, i8); 1] = [(0, move_direction)];
+    for pos in apply_offsets(offsets, position).filter(|pos| !occupied_positions.contains(pos)) {
+        f(pos)
+    }
+}
+
+pub fn for_each_diagonal_pawn_position(
+    position: u64,
+    enemy_positions: &[u64],
+    color: u64,
+    mut f: impl FnMut(u64),
+) {
+    let move_direction = -1 + 2 * color as i8;
+    let offsets: [(i8, i8); 2] = [(-1, move_direction), (1, move_direction)];
+    for pos in apply_offsets(offsets, position).filter(|pos| enemy_positions.contains(pos)) {
+        f(pos)
+    }
+}
+
+pub fn for_each_king_position(position: u64, blocked_positions: &[u64], mut f: impl FnMut(u64)) {
+    #[rustfmt::skip]
+    let offsets: [(i8, i8); 8] = [
+        (-1, -1), (-1, 0), (-1, 1),
+        ( 0, -1),          ( 0, 1),
+        ( 1, -1), ( 1, 0), ( 1, 1),
+    ];
+    for pos in apply_offsets(offsets, position).filter(|pos| !blocked_positions.contains(pos)) {
+        f(pos)
+    }
+}
+
+pub fn generate_wazir_positions(position: u64) -> impl Iterator<Item = u64> {
+    let offsets: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+    apply_offsets(offsets, position)
+}
+
+pub fn generate_ferz_positions(position: u64) -> impl Iterator<Item = u64> {
+    let offsets: [(i8, i8); 4] = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
+    apply_offsets(offsets, position)
 }
 
 pub fn generate_hors_positions(
