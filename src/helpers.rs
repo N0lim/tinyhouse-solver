@@ -18,6 +18,8 @@ pawn type encoding
 pub const STARTING_POSITION: u64 =
     0b_11_11_00000000_10101010_0111_1000_0000_1111_0001_1110_0010_1101_0011_1100;
 
+pub const MAXIMUM_GENERATED_POSITIONS: usize = 128; // 16 * 6 (pieces in pocket) + 8 * 2 (pawns in pocket) + 8 * 2 (kings)
+
 // pieces should be sorted in lexicographic order of fields, so they placed strangely
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct ChessPiece {
