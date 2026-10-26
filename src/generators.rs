@@ -89,7 +89,11 @@ pub fn for_each_generated_king_position(
     }
 }
 
-pub fn for_each_non_king_position_on_board(board: u64, move_side: u64, mut f: impl FnMut(u64)) {
+pub fn for_each_non_king_position_on_board(
+    board: u64,
+    move_side: u64,
+    mut f: impl FnMut((usize, u64)),
+) {
     let pieces = get_pieces(board);
     let occupied = collect_pos_by(|&piece| is_on_board(piece), pieces);
     let enemy = collect_pos_by(
@@ -103,27 +107,28 @@ pub fn for_each_non_king_position_on_board(board: u64, move_side: u64, mut f: im
         .filter(|(_, piece)| is_on_board(**piece) && piece.color == move_side)
     {
         let position = piece.position;
+        let mut i_f = |pos| f((i, pos));
         match i {
             0 | 1 => {}
-            2 | 3 => for_each_generated_wazir_position(position, &mut f),
-            4 | 5 => for_each_generated_hors_position(position, occupied.as_slice(), &mut f),
-            6 | 7 => for_each_generated_ferz_position(position, &mut f),
+            2 | 3 => for_each_generated_wazir_position(position, i_f),
+            4 | 5 => for_each_generated_hors_position(position, occupied.as_slice(), i_f),
+            6 | 7 => for_each_generated_ferz_position(position, i_f),
             8 | 9 => match piece.pawn_type.unwrap() {
-                0 => for_each_generated_wazir_position(position, &mut f),
-                1 => for_each_generated_hors_position(position, occupied.as_slice(), &mut f),
-                2 => for_each_generated_ferz_position(position, &mut f),
+                0 => for_each_generated_wazir_position(position, i_f),
+                1 => for_each_generated_hors_position(position, occupied.as_slice(), i_f),
+                2 => for_each_generated_ferz_position(position, i_f),
                 3 => {
                     for_each_generated_forward_pawn_position(
                         position,
                         occupied.as_slice(),
                         piece.color,
-                        &mut f,
+                        &mut i_f,
                     );
                     for_each_generated_diagonal_pawn_position(
                         position,
                         enemy.as_slice(),
                         piece.color,
-                        &mut f,
+                        &mut i_f,
                     );
                 }
                 _ => panic!("wrong pawn type"),
@@ -133,27 +138,28 @@ pub fn for_each_non_king_position_on_board(board: u64, move_side: u64, mut f: im
     }
 }
 
-pub fn for_each_position_in_pocket(board: u64, move_side: u64, mut f: impl FnMut(u64)) {
+pub fn for_each_position_in_pocket(board: u64, move_side: u64, mut f: impl FnMut((usize, u64))) {
     let pieces = get_pieces(board);
     for (i, _) in pieces
         .iter()
         .enumerate()
         .filter(|(_, piece)| !is_on_board(**piece) && piece.color == move_side)
     {
+        let mut i_f = |pos| f((i, pos));
         if i < 8 {
-            (0..16).into_iter().for_each(&mut f);
+            (0..16).into_iter().for_each(&mut i_f);
         }
         if i == 8 || i == 9 {
-            (4..12).into_iter().for_each(&mut f);
+            (4..12).into_iter().for_each(i_f);
         }
     }
 }
 
-pub fn for_each_position(board: u64, move_side: u64, mut f: impl FnMut(u64)) {
+pub fn for_each_position(board: u64, move_side: u64, mut f: impl FnMut((usize, u64))) {
     let mut blocked: Vec<u64> = Vec::with_capacity(MAXIMUM_GENERATED_POSITIONS);
-    for_each_non_king_position_on_board(board, move_side ^ 1, |x| blocked.push(x));
+    for_each_non_king_position_on_board(board, move_side ^ 1, |(_, pos)| blocked.push(pos));
     let king_pos = get_position(board, move_side);
-    for_each_generated_king_position(king_pos, &blocked, &mut f);
+    for_each_generated_king_position(king_pos, &blocked, |pos| f((move_side as usize, pos)));
     for_each_non_king_position_on_board(board, move_side, &mut f);
     for_each_position_in_pocket(board, move_side, &mut f);
 }
