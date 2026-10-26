@@ -34,13 +34,6 @@ pub fn move_piece(board: u64, index: u64, position: u64) -> u64 {
     sort_board(board)
 }
 
-pub fn generate_derivative_positions(board: u64) -> impl Iterator<Item = u64> {
-    let mut vec = Vec::new();
-    extend_by_generated_positions_non_kings_on_board(&mut vec, board, get_move_side(board));
-    vec.into_iter()
-        .map(move |(index, pos)| move_piece(board, index as u64, pos))
-}
-
 pub fn for_each_derivative_position(board: u64) -> Vec<u64> {
     let mut result = Vec::with_capacity(MAXIMUM_GENERATED_POSITIONS);
     let move_side = get_move_side(board);
