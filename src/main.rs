@@ -52,6 +52,8 @@ pub fn for_each_derivative_position(board: u64) -> Vec<u64> {
             result.push(board);
         }
     });
+    result.sort_unstable();
+    result.dedup();
     result
 }
 
