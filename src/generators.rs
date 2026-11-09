@@ -1,5 +1,4 @@
 use crate::helpers::*;
-use std::ops::Neg;
 
 pub fn for_each_generated_wazir_position(position: u64, mut f: impl FnMut(u64)) {
     let offsets: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
@@ -69,6 +68,18 @@ pub fn for_each_generated_diagonal_pawn_position(
     let move_direction = -1 + 2 * color as i8;
     let offsets: [(i8, i8); 2] = [(-1, move_direction), (1, move_direction)];
     for pos in apply_offsets(offsets, position).filter(|pos| enemy_positions.contains(pos)) {
+        f(pos)
+    }
+}
+
+pub fn for_each_generated_non_blocked_king_position(position: u64, mut f: impl FnMut(u64)) {
+    #[rustfmt::skip]
+    let offsets: [(i8, i8); 8] = [
+        (-1, -1), (-1, 0), (-1, 1),
+        ( 0, -1),          ( 0, 1),
+        ( 1, -1), ( 1, 0), ( 1, 1),
+    ];
+    for pos in apply_offsets(offsets, position) {
         f(pos)
     }
 }
@@ -146,6 +157,15 @@ pub fn for_each_non_king_position_on_board(
     }
 }
 
+pub fn for_each_king_position(board: u64, move_side: u64, mut f: impl FnMut((usize, u64))) {
+    let mut blocked: Vec<u64> = Vec::with_capacity(MAXIMUM_GENERATED_POSITIONS);
+    for_each_non_king_position_on_board(board, move_side ^ 1, |(_, pos)| blocked.push(pos));
+    let enemy_king_pos = get_position(board, move_side ^ 1);
+    for_each_generated_non_blocked_king_position(enemy_king_pos, |pos| blocked.push(pos));
+    let ally_king_pos = get_position(board, move_side);
+    for_each_generated_king_position(ally_king_pos, &blocked, |pos| f((move_side as usize, pos)));
+}
+
 pub fn for_each_position_in_pocket(board: u64, move_side: u64, mut f: impl FnMut((usize, u64))) {
     let pieces = get_pieces(board);
     for (i, _) in pieces
@@ -164,10 +184,7 @@ pub fn for_each_position_in_pocket(board: u64, move_side: u64, mut f: impl FnMut
 }
 
 pub fn for_each_position(board: u64, move_side: u64, mut f: impl FnMut((usize, u64))) {
-    let mut blocked: Vec<u64> = Vec::with_capacity(MAXIMUM_GENERATED_POSITIONS);
-    for_each_non_king_position_on_board(board, move_side ^ 1, |(_, pos)| blocked.push(pos));
-    let king_pos = get_position(board, move_side);
-    for_each_generated_king_position(king_pos, &blocked, |pos| f((move_side as usize, pos)));
+    for_each_king_position(board, move_side, &mut f);
     for_each_non_king_position_on_board(board, move_side, &mut f);
     for_each_position_in_pocket(board, move_side, &mut f);
 }
@@ -199,12 +216,12 @@ pub fn try_capture_piece(mut board: u64, position: u64) -> u64 {
 pub fn move_piece(board: u64, index: u64, position: u64) -> u64 {
     let board = try_capture_piece(board, position);
     let board = set_position(board, index, position);
+    let board = set_in_pocket(board, index, 0);
     sort_board(board)
 }
 
-pub fn generate_derivative_moves(board: u64) -> Vec<u64> {
+pub fn generate_derivative_moves_with_side(board: u64, move_side: u64) -> Vec<u64> {
     let mut result = Vec::with_capacity(MAXIMUM_GENERATED_POSITIONS);
-    let move_side = get_move_side(board);
     for_each_position(board, move_side, |(index, position)| {
         if !try_get_piece_by_position(board, position).is_some_and(|piece| piece.color == move_side)
         {
@@ -217,4 +234,9 @@ pub fn generate_derivative_moves(board: u64) -> Vec<u64> {
     result.sort_unstable();
     result.dedup();
     result
+}
+
+pub fn generate_derivative_moves(board: u64) -> Vec<u64> {
+    let move_side = get_move_side(board);
+    generate_derivative_moves_with_side(board, move_side)
 }
